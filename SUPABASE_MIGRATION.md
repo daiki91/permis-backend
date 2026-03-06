@@ -100,7 +100,7 @@ npm run dev
 Vous devriez voir:
 ```
 ✓ Connecté à Supabase PostgreSQL
-Serveur lancé sur http://localhost:5000
+Serveur lancé sur https://permis-backend-6ddi.onrender.com/
 ```
 
 ## 🔄 Couche d'abstraction

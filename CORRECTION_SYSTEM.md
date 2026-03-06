@@ -216,7 +216,7 @@ corrections.B01[0] = 'ABC'; // Ajouter C à la question 1
 ### Test de l'API
 ```bash
 # Soumettre un examen
-curl -X POST http://localhost:5000/submissions/submit \
+curl -X POST https://permis-backend-6ddi.onrender.com/submissions/submit \
   -H "Content-Type: application/json" \
   -d '{
     "userId": 1,
@@ -225,7 +225,7 @@ curl -X POST http://localhost:5000/submissions/submit \
   }'
 
 # Récupérer les résultats
-curl http://localhost:5000/submissions/user/1
+curl https://permis-backend-6ddi.onrender.com/submissions/user/1
 ```
 
 ### Table non créée?

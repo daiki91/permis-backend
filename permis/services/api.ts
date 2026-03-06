@@ -1,5 +1,6 @@
 import axios from 'axios';
-import Constants from 'expo-constants';
+
+const DEFAULT_API_URL = 'https://permis-backend-6ddi.onrender.com';
 
 function getApiBaseUrl() {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -7,13 +8,7 @@ function getApiBaseUrl() {
     return envUrl.replace(/\/$/, '');
   }
 
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    return `http://${host}:5000`;
-  }
-
-  return 'http://localhost:5000';
+  return DEFAULT_API_URL;
 }
 
 export const API_BASE_URL = getApiBaseUrl();
