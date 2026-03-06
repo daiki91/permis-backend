@@ -1,20 +1,44 @@
 require("dotenv").config();
 const { Pool } = require("pg");
 
+function buildConnectionStringFromEnv() {
+    if (process.env.DATABASE_URL) {
+        return process.env.DATABASE_URL;
+    }
+
+    const host = process.env.DB_HOST;
+    const user = process.env.DB_USER;
+    const password = process.env.DB_PASSWORD;
+    const database = process.env.DB_NAME || "postgres";
+    const port = process.env.DB_PORT || "5432";
+
+    if (!host || !user || password === undefined) {
+        return null;
+    }
+
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+}
+
+const connectionString = buildConnectionStringFromEnv();
+
 // PostgreSQL connection via Supabase Connection Pooler
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     ssl: { rejectUnauthorized: false },
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
 });
 
+if (!connectionString) {
+    console.error("✗ Configuration DB manquante: définissez DATABASE_URL ou DB_HOST/DB_USER/DB_PASSWORD/DB_NAME/DB_PORT");
+}
+
 // Test connection
 pool.connect()
     .then(conn => {
         console.log("✓ Connecté à Supabase PostgreSQL");
-        console.log("  Host:", process.env.DB_HOST, "Port:", process.env.DB_PORT);
+        console.log("  Host:", process.env.DB_HOST || "(extrait depuis DATABASE_URL)", "Port:", process.env.DB_PORT || "5432");
         conn.release();
     })
     .catch(err => {
