@@ -82,9 +82,20 @@ app.use((req, res) => {
 // Gestion des erreurs
 app.use((err, req, res, next) => {
     console.error("Erreur:", err);
-    res.status(500).json({
-        message: "Erreur serveur",
-        error: process.env.NODE_ENV === "development" ? err.message : "Erreur interne"
+
+    // body-parser signale un JSON invalide avec ce type d'erreur
+    if (err && err.type === "entity.parse.failed") {
+        return res.status(400).json({
+            message: "JSON invalide",
+            error: process.env.NODE_ENV === "development" ? err.message : undefined
+        });
+    }
+
+    const statusCode = err.statusCode || err.status || 500;
+
+    res.status(statusCode).json({
+        message: statusCode >= 500 ? "Erreur serveur" : "Requête invalide",
+        error: process.env.NODE_ENV === "development" ? err.message : (statusCode >= 500 ? "Erreur interne" : undefined)
     });
 });
 
