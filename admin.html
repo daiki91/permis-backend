@@ -787,6 +787,7 @@
         <ul class="sidebar-nav">
             <li><a href="#" onclick="switchTab('dashboard'); return false;" class="nav-link active" data-tab="dashboard">Tableau de bord</a></li>
             <li><a href="#" onclick="switchTab('exams'); return false;" class="nav-link" data-tab="exams">Gérer les examens</a></li>
+            <li><a href="#" onclick="switchTab('users'); return false;" class="nav-link" data-tab="users">Gérer les utilisateurs</a></li>
             <li><a href="#" onclick="switchTab('submissions'); return false;" class="nav-link" data-tab="submissions">Soumissions</a></li>
         </ul>
         
@@ -818,6 +819,10 @@
                 <div class="stat-card">
                     <div class="stat-value" id="questionCount">0</div>
                     <div class="stat-label">Questions uploadées</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="userCount">0</div>
+                    <div class="stat-label">Utilisateurs inscrits</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="submissionCount">0</div>
@@ -879,6 +884,46 @@
                         <h3>Aucun examen</h3>
                         <p>Créez votre premier examen pour commencer</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="usersTab" class="tab-content hidden">
+            <div class="page-header">
+                <h1>Gérer les utilisateurs</h1>
+                <p>Consultez et gérez les utilisateurs inscrits</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Liste des utilisateurs</h2>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Prénom</th>
+                                <th>Email</th>
+                                <th>Téléphone</th>
+                                <th>Date d'inscription</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="7">
+                                    <div class="loading">
+                                        <div class="spinner"></div>
+                                        <p>Chargement...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -1029,6 +1074,27 @@
     </div>
 </div>
 
+<!-- Modal: Détails utilisateur -->
+<div id="userDetailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Détails de l'utilisateur</h2>
+            <button class="modal-close" onclick="closeModal('userDetailsModal')">&times;</button>
+        </div>
+
+        <div id="userDetailsContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Chargement...</p>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('userDetailsModal')">Fermer</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const API_URL = "http://localhost:5000";
     let adminToken = localStorage.getItem("adminToken");
@@ -1138,6 +1204,7 @@
         event.target.classList.add("active");
 
         if (tabName === "exams") loadExams();
+        if (tabName === "users") loadUsers();
         if (tabName === "submissions") loadSubmissionsPage();
     }
 
@@ -1153,6 +1220,13 @@
 
             const totalQuestions = exams.reduce((sum, exam) => sum + (exam.question_count || 0), 0);
             document.getElementById("questionCount").textContent = totalQuestions;
+
+            // Charger les utilisateurs
+            const usersResponse = await fetch(`${API_URL}/admins/users`, {
+                headers: { "Authorization": `Bearer ${adminToken}` }
+            });
+            const users = await usersResponse.json();
+            document.getElementById("userCount").textContent = users.length;
 
             let totalSubmissions = 0;
             for (const exam of exams) {
@@ -1403,6 +1477,148 @@
     function viewSubmissionDetails(submissionId) {
         // Placeholder pour afficher les détails
         alert(`Détails de la soumission ${submissionId}`);
+    }
+
+    // Users Management
+    async function loadUsers() {
+        try {
+            const response = await fetch(`${API_URL}/admins/users`, {
+                headers: { "Authorization": `Bearer ${adminToken}` }
+            });
+
+            if (!response.ok) {
+                throw new Error("Erreur lors du chargement des utilisateurs");
+            }
+
+            const users = await response.json();
+
+            const usersHTML = users.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.nom || '-'}</td>
+                    <td>${user.prenom || '-'}</td>
+                    <td>${user.email}</td>
+                    <td>${user.telephone || '-'}</td>
+                    <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-small btn-primary" onclick="viewUserDetails(${user.id})">Détails</button>
+                            <button class="btn btn-small btn-danger" onclick="deleteUserAccount(${user.id}, '${user.email}')">Supprimer</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join("");
+
+            document.getElementById("usersTable").innerHTML = usersHTML || `
+                <tr><td colspan="7"><div class="empty-state"><p>Aucun utilisateur inscrit</p></div></td></tr>
+            `;
+        } catch (error) {
+            console.error("Erreur:", error);
+            document.getElementById("usersTable").innerHTML = `
+                <tr><td colspan="7"><div class="empty-state"><p>Erreur lors du chargement</p></div></td></tr>
+            `;
+        }
+    }
+
+    async function viewUserDetails(userId) {
+        openModal('userDetailsModal');
+        document.getElementById('userDetailsContent').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Chargement...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`${API_URL}/admins/users/${userId}`, {
+                headers: { "Authorization": `Bearer ${adminToken}` }
+            });
+
+            if (!response.ok) {
+                throw new Error("Erreur lors du chargement");
+            }
+
+            const data = await response.json();
+            const user = data.user;
+            const stats = data.stats;
+
+            document.getElementById('userDetailsContent').innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: var(--primary-color);">Informations personnelles</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <strong>Nom:</strong><br>
+                            ${user.nom || '-'}
+                        </div>
+                        <div>
+                            <strong>Prénom:</strong><br>
+                            ${user.prenom || '-'}
+                        </div>
+                        <div>
+                            <strong>Email:</strong><br>
+                            ${user.email}
+                        </div>
+                        <div>
+                            <strong>Téléphone:</strong><br>
+                            ${user.telephone || '-'}
+                        </div>
+                        <div>
+                            <strong>Date d'inscription:</strong><br>
+                            ${new Date(user.created_at).toLocaleDateString('fr-FR')}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid var(--border-gray);">
+                    <h3 style="margin-bottom: 15px; color: var(--primary-color);">Statistiques</h3>
+                    <div class="stats-grid" style="margin: 0;">
+                        <div class="stat-card" style="margin: 0;">
+                            <div class="stat-value">${stats.total_submissions || 0}</div>
+                            <div class="stat-label">Tentatives totales</div>
+                        </div>
+                        <div class="stat-card" style="margin: 0;">
+                            <div class="stat-value">${stats.completed_exams || 0}</div>
+                            <div class="stat-label">Examens complétés</div>
+                        </div>
+                        <div class="stat-card" style="margin: 0;">
+                            <div class="stat-value">${stats.avg_score ? stats.avg_score.toFixed(1) : '0'}</div>
+                            <div class="stat-label">Score moyen</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error("Erreur:", error);
+            document.getElementById('userDetailsContent').innerHTML = `
+                <div class="alert alert-error">Erreur lors du chargement des détails</div>
+            `;
+        }
+    }
+
+    async function deleteUserAccount(userId, userEmail) {
+        if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${userEmail}?\n\nCette action supprimera également toutes ses soumissions.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/admins/users/${userId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${adminToken}` }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.message || "Erreur lors de la suppression");
+                return;
+            }
+
+            alert("Utilisateur supprimé avec succès!");
+            loadUsers();
+        } catch (error) {
+            alert("Erreur lors de la suppression");
+            console.error(error);
+        }
     }
 
     // Utility Functions

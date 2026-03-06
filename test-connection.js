@@ -9,17 +9,17 @@ const { Client } = require('pg');
 const configs = [
   {
     name: 'Transaction Pooler (port 6543)',
-    connectionString: `postgresql://postgres.jbnlncweknkqjhuuqfaw:P%40sser2022Daiki@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`,
+    connectionString: `postgresql://postgres.wmuagmwiuzjztirimshp:P%40sser2022Daiki@aws-1-eu-west-1.pooler.supabase.com:6543/postgres`,
     ssl: { rejectUnauthorized: false }
   },
   {
     name: 'Session Pooler (port 5432)',
-    connectionString: `postgresql://postgres.jbnlncweknkqjhuuqfaw:P%40sser2022Daiki@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`,
+    connectionString: `postgresql://postgres.wmuagmwiuzjztirimshp:P%40sser2022Daiki@aws-1-eu-west-1.pooler.supabase.com:5432/postgres`,
     ssl: { rejectUnauthorized: false }
   },
   {
     name: 'Direct Connection (db.*.supabase.co)',
-    connectionString: `postgresql://postgres:P%40sser2022Daiki@db.jbnlncweknkqjhuuqfaw.supabase.co:5432/postgres`,
+    connectionString: `postgresql://postgres:P%40sser2022Daiki@db.wmuagmwiuzjztirimshp.supabase.co:5432/postgres`,
     ssl: { rejectUnauthorized: false }
   }
 ];
@@ -69,7 +69,7 @@ async function testAll() {
     console.log('❌ Aucune configuration ne fonctionne');
     console.log('\n🔍 Actions recommandées:');
     console.log('   1. Vérifiez que le projet Supabase est actif (pas en pause)');
-    console.log('   2. Allez sur: https://supabase.com/dashboard/project/jbnlncweknkqjhuuqfaw/settings/database');
+    console.log('   2. Allez sur: https://supabase.com/dashboard/project/wmuagmwiuzjztirimshp/settings/database');
     console.log('   3. Copiez la Connection String exacte depuis le dashboard');
     console.log('   4. Vérifiez la région (peut-être pas eu-central-1)');
     console.log('   5. Vérifiez votre connexion internet et pare-feu');

@@ -114,3 +114,89 @@ exports.getProfile = async (req, res) => {
         res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
 };
+
+// Récupérer tous les utilisateurs (pour admin)
+exports.getAllUsers = async (req, res) => {
+    try {
+        const conn = await pool.getConnection();
+        const [users] = await conn.query(`
+            SELECT id, nom, prenom, email, telephone, created_at 
+            FROM users 
+            ORDER BY created_at DESC
+        `);
+        conn.release();
+
+        res.json(users);
+    } catch (error) {
+        console.error("Erreur lors de la récupération des utilisateurs:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};
+
+// Récupérer les détails d'un utilisateur (pour admin)
+exports.getUserDetails = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const conn = await pool.getConnection();
+        
+        // Récupérer les infos de l'utilisateur
+        const [users] = await conn.query(`
+            SELECT id, nom, prenom, email, telephone, created_at 
+            FROM users 
+            WHERE id = ?
+        `, [userId]);
+
+        if (users.length === 0) {
+            conn.release();
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        // Récupérer les statistiques des soumissions
+        const [submissions] = await conn.query(`
+            SELECT COUNT(*) as total_submissions,
+                   SUM(CASE WHEN status = 'soumis' THEN 1 ELSE 0 END) as completed_exams,
+                   AVG(CASE WHEN status = 'soumis' THEN score END) as avg_score
+            FROM submissions
+            WHERE user_id = ?
+        `, [userId]);
+
+        conn.release();
+
+        res.json({
+            user: users[0],
+            stats: submissions[0]
+        });
+    } catch (error) {
+        console.error("Erreur:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};
+
+// Supprimer un utilisateur (pour admin)
+exports.deleteUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const conn = await pool.getConnection();
+
+        // Vérifier si l'utilisateur existe
+        const [users] = await conn.query("SELECT id FROM users WHERE id = ?", [userId]);
+        
+        if (users.length === 0) {
+            conn.release();
+            return res.status(404).json({ message: "Utilisateur non trouvé" });
+        }
+
+        // Supprimer les soumissions de l'utilisateur
+        await conn.query("DELETE FROM submissions WHERE user_id = ?", [userId]);
+
+        // Supprimer l'utilisateur
+        await conn.query("DELETE FROM users WHERE id = ?", [userId]);
+
+        conn.release();
+
+        res.json({ message: "Utilisateur supprimé avec succès" });
+    } catch (error) {
+        console.error("Erreur lors de la suppression:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};

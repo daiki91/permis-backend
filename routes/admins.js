@@ -4,7 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const { register, login, getProfile } = require("../controllers/adminsController");
+const { register, login, getProfile, getAllUsers, getUserDetails, deleteUser } = require("../controllers/adminsController");
 const {
     createExam,
     getExamsByAdmin,
@@ -56,6 +56,13 @@ router.post("/login", login);
 
 // Routes protégées (nécessitent authentification admin)
 router.get("/profile", authenticateAdmin, getProfile);
+
+// Gestion des utilisateurs
+router.get("/users", authenticateAdmin, getAllUsers);
+router.get("/users/:userId", authenticateAdmin, getUserDetails);
+router.delete("/users/:userId", authenticateAdmin, deleteUser);
+
+// Gestion des examens
 router.post("/exams", authenticateAdmin, createExam);
 router.get("/exams", authenticateAdmin, getExamsByAdmin);
 router.delete("/exams/:examId", authenticateAdmin, deleteExam);

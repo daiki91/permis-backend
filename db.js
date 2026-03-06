@@ -35,8 +35,8 @@ pool.on('error', (err) => {
 
 // Wrapper pour compatibilité avec code existant mysql2
 class ConnectionWrapper {
-    constructor(pgPool) {
-        this.pgPool = pgPool;
+    constructor(pgClient) {
+        this.pgClient = pgClient;
     }
 
     /**
@@ -51,11 +51,20 @@ class ConnectionWrapper {
             let paramIndex = 1;
             convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
 
-            const result = await this.pgPool.query(convertedSql, params);
+            const result = await this.pgClient.query(convertedSql, params);
             // Retourner au format mysql2 pour compatibilité
             return [result.rows, result.fields];
         } catch (error) {
             throw error;
+        }
+    }
+
+    /**
+     * Release la connexion vers le pool
+     */
+    release() {
+        if (this.pgClient && this.pgClient.release) {
+            this.pgClient.release();
         }
     }
 }
@@ -63,13 +72,18 @@ class ConnectionWrapper {
 // Wrapper pour compatibilité avec interface getConnection()
 const poolWrapper = {
     async getConnection() {
-        // Pour PostgreSQL, on retourne juste un wrapper compatible
-        // Pas de gestion de connexion explicite comme mysql2
-        return new ConnectionWrapper(pool);
+        // Obtenir une vraie connexion du pool PostgreSQL
+        const client = await pool.connect();
+        return new ConnectionWrapper(client);
     },
     async query(sql, params) {
-        const conn = new ConnectionWrapper(pool);
-        return conn.query(sql, params);
+        // Pour les queries directes, utiliser le pool
+        let convertedSql = sql;
+        let paramIndex = 1;
+        convertedSql = convertedSql.replace(/\?/g, () => `$${paramIndex++}`);
+        
+        const result = await pool.query(convertedSql, params);
+        return [result.rows, result.fields];
     }
 };
 

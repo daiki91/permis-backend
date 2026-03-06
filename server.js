@@ -34,6 +34,11 @@ app.use("/admins", adminsRoutes);
 app.use("/exams", examsRoutes);
 app.use("/submissions", submissionsRoutes);
 
+// Servir la page admin
+app.get("/adminpage", (req, res) => {
+    res.sendFile(path.join(__dirname, "admin.html"));
+});
+
 // Route de test
 app.get("/", (req, res) => {
     res.json({
