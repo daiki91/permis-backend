@@ -56,19 +56,32 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: "Email et mot de passe requis" });
         }
 
+        console.log(`[ADMIN LOGIN] Tentative connexion email: ${email}`);
+
         const conn = await pool.getConnection();
+        console.log(`[ADMIN LOGIN] Connexion DB établie, exécution query...`);
+        
         const [admins] = await conn.query("SELECT * FROM admins WHERE email = ?", [email]);
+        console.log(`[ADMIN LOGIN] Query exécutée, admins.length=${admins ? admins.length : "UNDEFINED"}`);
 
         conn.release();
 
-        if (admins.length === 0) {
+        if (!admins || admins.length === 0) {
+            console.log(`[ADMIN LOGIN] Aucun admin trouvé pour email: ${email}`);
             return res.status(401).json({ message: "Email ou mot de passe incorrect" });
         }
 
         const admin = admins[0];
+        console.log(`[ADMIN LOGIN] Admin trouvé: id=${admin.id}, nom=${admin.nom}`);
 
         // Vérifier le mot de passe
+        if (!admin.password) {
+            console.error(`[ADMIN LOGIN] ERREUR: admin.password est undefined pour id=${admin.id}`);
+            return res.status(500).json({ message: "Erreur serveur", error: "Mot de passe non trouvé" });
+        }
+
         const passwordMatch = await bcrypt.compare(password, admin.password);
+        console.log(`[ADMIN LOGIN] Comparaison bcrypt: ${passwordMatch ? "OK" : "FAIL"}`);
 
         if (!passwordMatch) {
             return res.status(401).json({ message: "Email ou mot de passe incorrect" });
@@ -81,6 +94,8 @@ exports.login = async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRE || "7d" }
         );
 
+        console.log(`[ADMIN LOGIN] Connexion réussie pour ${email}`);
+
         res.json({
             message: "Connexion réussie",
             token,
@@ -91,7 +106,8 @@ exports.login = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Erreur lors de la connexion:", error);
+        console.error("[ADMIN LOGIN] Exception:", error.message);
+        console.error("[ADMIN LOGIN] Stack:", error.stack);
         res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
 };
