@@ -43,3 +43,29 @@ exports.authenticateAdmin = (req, res, next) => {
         return res.status(401).json({ message: "Token invalide ou expiré" });
     }
 };
+
+// Middleware pour authentifier n'importe quel token (user ou admin)
+exports.authenticateToken = (req, res, next) => {
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "Token non fourni" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret");
+        
+        if (decoded.type === "admin") {
+            req.admin = decoded;
+        } else if (decoded.type === "user") {
+            req.user = decoded;
+        } else {
+            return res.status(403).json({ message: "Type de token invalide" });
+        }
+
+        req.token = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: "Token invalide ou expiré" });
+    }
+};

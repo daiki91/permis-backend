@@ -39,6 +39,28 @@ app.get("/adminpage", (req, res) => {
     res.sendFile(path.join(__dirname, "admin.html"));
 });
 
+// Route de debug - test connexion DB
+app.get("/debug/db-test", async (req, res) => {
+    try {
+        const conn = await pool.getConnection();
+        const [admins] = await conn.query("SELECT id, nom, email FROM admins LIMIT 5");
+        conn.release();
+        
+        res.json({
+            status: "ok",
+            message: "DB connexion OK",
+            admins_count: admins ? admins.length : 0,
+            admins: admins || []
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: "error",
+            message: error.message,
+            code: error.code
+        });
+    }
+});
+
 // Route de test
 app.get("/", (req, res) => {
     res.json({

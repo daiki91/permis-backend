@@ -56,30 +56,73 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: "Email et mot de passe requis" });
         }
 
-        const conn = await pool.getConnection();
-        const [users] = await conn.query("SELECT * FROM users WHERE email = ?", [email]);
+        console.log(`[USER LOGIN] Tentative connexion email: ${email}`);
+
+        let conn;
+        try {
+            conn = await pool.getConnection();
+        } catch (error) {
+            console.error(`[USER LOGIN] Erreur connexion pool:`, error.message);
+            return res.status(500).json({ message: "Erreur serveur", error: "Impossible de connecter à la DB" });
+        }
+
+        console.log(`[USER LOGIN] Connexion DB établie, exécution query...`);
+
+        let users;
+        try {
+            [users] = await conn.query("SELECT * FROM users WHERE email = ?", [email]);
+            console.log(`[USER LOGIN] Query exécutée, users.length=${users ? users.length : "UNDEFINED"}`);
+        } catch (queryError) {
+            conn.release();
+            console.error(`[USER LOGIN] Erreur query:`, queryError.message);
+            return res.status(500).json({ message: "Erreur serveur", error: "Erreur DB query" });
+        }
 
         conn.release();
 
-        if (users.length === 0) {
+        if (!users || users.length === 0) {
+            console.log(`[USER LOGIN] Aucun utilisateur trouvé pour email: ${email}`);
             return res.status(401).json({ message: "Email ou mot de passe incorrect" });
         }
 
         const user = users[0];
+        console.log(`[USER LOGIN] Utilisateur trouvé: id=${user.id}, nom=${user.nom}, password=${user.password ? "PRESENT" : "NULL"}`);
+
+        // Vérifier que le password existe et est valide
+        if (!user.password || typeof user.password !== 'string') {
+            console.error(`[USER LOGIN] ERREUR: user.password invalide pour id=${user.id} (type: ${typeof user.password})`);
+            return res.status(500).json({ message: "Erreur serveur", error: "Données utilisateur invalides" });
+        }
 
         // Vérifier le mot de passe
-        const passwordMatch = await bcrypt.compare(password, user.password);
+        let passwordMatch;
+        try {
+            passwordMatch = await bcrypt.compare(password, user.password);
+            console.log(`[USER LOGIN] Comparaison bcrypt: ${passwordMatch ? "OK" : "FAIL"}`);
+        } catch (bcryptError) {
+            console.error(`[USER LOGIN] Erreur bcrypt.compare:`, bcryptError.message);
+            return res.status(500).json({ message: "Erreur serveur", error: "Erreur authentification" });
+        }
 
         if (!passwordMatch) {
             return res.status(401).json({ message: "Email ou mot de passe incorrect" });
         }
 
         // Générer token JWT
-        const token = jwt.sign(
-            { id: user.id, email: user.email, type: "user" },
-            process.env.JWT_SECRET || "secret",
-            { expiresIn: process.env.JWT_EXPIRE || "7d" }
-        );
+        let token;
+        try {
+            token = jwt.sign(
+                { id: user.id, email: user.email, type: "user" },
+                process.env.JWT_SECRET || "secret",
+                { expiresIn: process.env.JWT_EXPIRE || "7d" }
+            );
+            console.log(`[USER LOGIN] Token JWT généré avec succès`);
+        } catch (jwtError) {
+            console.error(`[USER LOGIN] Erreur JWT.sign:`, jwtError.message);
+            return res.status(500).json({ message: "Erreur serveur", error: "Erreur génération token" });
+        }
+
+        console.log(`[USER LOGIN] Connexion réussie pour ${email}`);
 
         res.json({
             message: "Connexion réussie",
@@ -92,7 +135,8 @@ exports.login = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Erreur lors de la connexion:", error);
+        console.error("[USER LOGIN] Exception non tractée:", error.message);
+        console.error("[USER LOGIN] Stack:", error.stack);
         res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
 };

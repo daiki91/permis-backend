@@ -1095,6 +1095,27 @@
     </div>
 </div>
 
+<!-- Modal: Soumissions d'un examen -->
+<div id="examSubmissionsModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 id="examSubmissionsTitle">Notes des utilisateurs</h2>
+            <button class="modal-close" onclick="closeModal('examSubmissionsModal')">&times;</button>
+        </div>
+
+        <div id="examSubmissionsContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Chargement...</p>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('examSubmissionsModal')">Fermer</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const API_URL = "https://permis-backend-6ddi.onrender.com";
     let adminToken = localStorage.getItem("adminToken");
@@ -1280,13 +1301,36 @@
                 </div>
             `).join("");
 
-            document.getElementById("examsList").innerHTML = examsHTML || `
-                <div class="empty-state" style="grid-column: 1/-1;">
-                    <div class="empty-state-icon">📋</div>
-                    <h3>Aucun examen</h3>
-                    <p>Créez votre premier examen pour commencer</p>
+            // Ajouter section pour examens statiques B01-B12
+            const staticExamsHTML = `
+                <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border-gray);">
+                    <h3 style="margin-bottom: 20px; color: var(--primary-color);">📊 Examens statiques (B01-B12)</h3>
+                    <div class="exam-grid">
+                        ${['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09', 'B10', 'B11', 'B12'].map(code => `
+                            <div class="exam-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                <h3 style="color: white;">Examen ${code}</h3>
+                                <p style="color: rgba(255,255,255,0.9);">Examen officiel (25 questions)</p>
+                                <div class="exam-meta" style="color: rgba(255,255,255,0.9);">
+                                    <span>25 questions</span>
+                                </div>
+                                <div class="exam-actions">
+                                    <button class="btn btn-small" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;" onclick="viewExamSubmissions('${code}', 'Examen ${code}')">
+                                        📊 Voir les notes
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             `;
+
+            document.getElementById("examsList").innerHTML = (examsHTML || `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="empty-state-icon">📋</div>
+                    <h3>Aucun examen personnalisé</h3>
+                    <p>Créez votre premier examen pour commencer</p>
+                </div>
+            `) + staticExamsHTML;
         } catch (error) {
             console.error("Erreur lors du chargement des examens:", error);
         }
@@ -1586,11 +1630,186 @@
                         </div>
                     </div>
                 </div>
+
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid var(--border-gray);">
+                    <h3 style="margin-bottom: 15px; color: var(--primary-color);">Historique des examens</h3>
+                    <div id="userSubmissionsHistory_${userId}">
+                        <div class="loading"><div class="spinner"></div><p>Chargement...</p></div>
+                    </div>
+                </div>
             `;
         } catch (error) {
             console.error("Erreur:", error);
             document.getElementById('userDetailsContent').innerHTML = `
                 <div class="alert alert-error">Erreur lors du chargement des détails</div>
+            `;
+        }
+
+        // Charger l'historique des soumissions
+        loadUserSubmissionsHistory(userId);
+    }
+
+    async function loadUserSubmissionsHistory(userId) {
+        try {
+            const response = await fetch(`${API_URL}/submissions/user/${userId}`, {
+                headers: { "Authorization": `Bearer ${adminToken}` }
+            });
+
+            if (!response.ok) throw new Error("Erreur chargement");
+
+            const data = await response.json();
+            const submissions = data.data || [];
+
+            const historyDiv = document.getElementById(`userSubmissionsHistory_${userId}`);
+            
+            if (submissions.length === 0) {
+                historyDiv.innerHTML = '<p style="color: var(--text-light); text-align: center;">Aucun examen passé</p>';
+                return;
+            }
+
+            const submissionsHTML = submissions.map(sub => {
+                const statusColor = sub.is_passed ? 'var(--success-color)' : 'var(--danger-color)';
+                const statusText = sub.is_passed ? '✓ Réussi' : '✗ Échoué';
+                
+                return `
+                    <div style="background: var(--light-gray); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ${statusColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${sub.exam_code}</strong><br>
+                                <span style="font-size: 13px; color: var(--text-light);">
+                                    ${new Date(sub.submitted_at).toLocaleDateString('fr-FR')} à ${new Date(sub.submitted_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                                </span>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 24px; font-weight: 700; color: ${statusColor};">
+                                    ${sub.percentage}%
+                                </div>
+                                <div style="font-size: 12px; color: ${statusColor};">
+                                    ${statusText}
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-light); margin-top: 2px;">
+                                    ${sub.correct_count}/${sub.total_count}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            historyDiv.innerHTML = submissionsHTML;
+        } catch (error) {
+            console.error("Erreur:", error);
+            const historyDiv = document.getElementById(`userSubmissionsHistory_${userId}`);
+            if (historyDiv) {
+                historyDiv.innerHTML = '<p style="color: var(--danger-color); text-align: center;">Erreur lors du chargement de l\'historique</p>';
+            }
+        }
+    }
+
+    async function viewExamSubmissions(examCode, examTitle) {
+        openModal('examSubmissionsModal');
+        document.getElementById('examSubmissionsTitle').textContent = `Notes - ${examTitle}`;
+        document.getElementById('examSubmissionsContent').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Chargement des soumissions...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`${API_URL}/admins/exams/${examCode}/submissions`, {
+                headers: { "Authorization": `Bearer ${adminToken}` }
+            });
+
+            if (!response.ok) throw new Error("Erreur chargement");
+
+            const responseData = await response.json();
+            const submissions = responseData.data?.submissions || responseData.submissions || [];
+
+            if (submissions.length === 0) {
+                document.getElementById('examSubmissionsContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h3>Aucune soumission</h3>
+                        <p>Aucun utilisateur n'a encore passé cet examen</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const submissionsHTML = `
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">Utilisateur</th>
+                                <th>Email</th>
+                                <th>Score</th>
+                                <th>Pourcentage</th>
+                                <th>Statut</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${submissions.map(sub => {
+                                const statusColor = (sub.percentage || 0) >= 80 ? 'var(--success-color)' : 'var(--danger-color)';
+                                const statusText = (sub.percentage || 0) >= 80 ? '✓ Réussi' : '✗ Échoué';
+                                
+                                return `
+                                    <tr>
+                                        <td style="text-align: left;"><strong>${sub.user_name || sub.user_nom || 'Anonyme'}</strong></td>
+                                        <td>${sub.user_email || '-'}</td>
+                                        <td><strong>${sub.correct_count || 0}/${sub.total_count || 25}</strong></td>
+                                        <td>
+                                            <span style="font-size: 18px; font-weight: 700; color: ${statusColor};">
+                                                ${sub.percentage || 0}%
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style="color: ${statusColor}; font-weight: 600;">
+                                                ${statusText}
+                                            </span>
+                                        </td>
+                                        <td style="font-size: 13px; color: var(--text-light);">
+                                            ${sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('fr-FR') : '-'}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; padding: 15px; background: var(--light-gray); border-radius: 8px;">
+                    <h4 style="margin-bottom: 10px; color: var(--primary-color);">Statistiques</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-light);">Total soumissions</div>
+                            <div style="font-size: 24px; font-weight: 700; color: var(--primary-color);">
+                                ${submissions.length}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-light);">Score moyen</div>
+                            <div style="font-size: 24px; font-weight: 700; color: var(--primary-color);">
+                                ${(submissions.reduce((sum, s) => sum + (s.percentage || 0), 0) / submissions.length).toFixed(1)}%
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-light);">Taux de réussite</div>
+                            <div style="font-size: 24px; font-weight: 700; color: var(--success-color);">
+                                ${((submissions.filter(s => (s.percentage || 0) >= 80).length / submissions.length) * 100).toFixed(0)}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('examSubmissionsContent').innerHTML = submissionsHTML;
+        } catch (error) {
+            console.error("Erreur:", error);
+            document.getElementById('examSubmissionsContent').innerHTML = `
+                <div class="alert alert-error">Erreur lors du chargement des soumissions</div>
             `;
         }
     }

@@ -5,6 +5,7 @@ const {
     getUserResults,
     getExamResult
 } = require("../controllers/submissionsController");
+const { authenticateToken, authenticateAdmin } = require("../middlewares/auth");
 
 /**
  * Routes publiques pour soumettre les examens
@@ -14,8 +15,8 @@ const {
 // POST /submissions/submit - Soumettre un examen
 router.post("/submit", submitExam);
 
-// GET /submissions/user/:userId - Récupérer tous les résultats d'un utilisateur
-router.get("/user/:userId", getUserResults);
+// GET /submissions/user/:userId - Récupérer tous les résultats d'un utilisateur (auth requise)
+router.get("/user/:userId", authenticateToken, getUserResults);
 
 // GET /submissions/result/:userId/:examCode - Récupérer le résultat d'un examen
 router.get("/result/:userId/:examCode", getExamResult);
