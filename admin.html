@@ -906,16 +906,18 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Nom</th>
-                                <th>Prénom</th>
                                 <th>Email</th>
                                 <th>Téléphone</th>
+                                <th>Activité</th>
+                                <th>Moyenne</th>
+                                <th>Dernière activité</th>
                                 <th>Date d'inscription</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="usersTable">
                             <tr>
-                                <td colspan="7">
+                                <td colspan="9">
                                     <div class="loading">
                                         <div class="spinner"></div>
                                         <p>Chargement...</p>
@@ -1224,6 +1226,7 @@
         document.getElementById(tabName + "Tab").classList.remove("hidden");
         event.target.classList.add("active");
 
+        if (tabName === "dashboard") loadDashboard();
         if (tabName === "exams") loadExams();
         if (tabName === "users") loadUsers();
         if (tabName === "submissions") loadSubmissionsPage();
@@ -1235,7 +1238,7 @@
             const examsResponse = await fetch(`${API_URL}/admins/exams`, {
                 headers: { "Authorization": `Bearer ${adminToken}` }
             });
-            const exams = await examsResponse.json();
+            const exams = examsResponse.ok ? await examsResponse.json() : [];
 
             document.getElementById("examCount").textContent = exams.length;
 
@@ -1246,7 +1249,7 @@
             const usersResponse = await fetch(`${API_URL}/admins/users`, {
                 headers: { "Authorization": `Bearer ${adminToken}` }
             });
-            const users = await usersResponse.json();
+            const users = usersResponse.ok ? await usersResponse.json() : [];
             document.getElementById("userCount").textContent = users.length;
 
             let totalSubmissions = 0;
@@ -1254,7 +1257,7 @@
                 const submissionsResponse = await fetch(`${API_URL}/admins/exams/${exam.id}/submissions`, {
                     headers: { "Authorization": `Bearer ${adminToken}` }
                 });
-                const submissions = await submissionsResponse.json();
+                const submissions = submissionsResponse.ok ? await submissionsResponse.json() : [];
                 totalSubmissions += submissions.length;
             }
 
@@ -1277,6 +1280,7 @@
             `;
         } catch (error) {
             console.error("Erreur lors du chargement du dashboard:", error);
+            document.getElementById("userCount").textContent = "0";
         }
     }
 
@@ -1535,14 +1539,17 @@
             }
 
             const users = await response.json();
+            document.getElementById("userCount").textContent = users.length;
 
             const usersHTML = users.map(user => `
                 <tr>
                     <td>${user.id}</td>
                     <td>${user.nom || '-'}</td>
-                    <td>${user.prenom || '-'}</td>
                     <td>${user.email}</td>
                     <td>${user.telephone || '-'}</td>
+                    <td>${user.total_submissions || 0} examen(s)</td>
+                    <td>${Number(user.avg_percentage || 0).toFixed(1)}%</td>
+                    <td>${user.last_activity ? new Date(user.last_activity).toLocaleDateString('fr-FR') : '-'}</td>
                     <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
                     <td>
                         <div style="display: flex; gap: 8px;">
@@ -1554,12 +1561,12 @@
             `).join("");
 
             document.getElementById("usersTable").innerHTML = usersHTML || `
-                <tr><td colspan="7"><div class="empty-state"><p>Aucun utilisateur inscrit</p></div></td></tr>
+                <tr><td colspan="9"><div class="empty-state"><p>Aucun utilisateur inscrit</p></div></td></tr>
             `;
         } catch (error) {
             console.error("Erreur:", error);
             document.getElementById("usersTable").innerHTML = `
-                <tr><td colspan="7"><div class="empty-state"><p>Erreur lors du chargement</p></div></td></tr>
+                <tr><td colspan="9"><div class="empty-state"><p>Erreur lors du chargement</p></div></td></tr>
             `;
         }
     }

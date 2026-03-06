@@ -165,8 +165,18 @@ exports.getAllUsers = async (req, res) => {
         console.log('[ADMIN] Récupération de tous les utilisateurs...');
         const conn = await pool.getConnection();
         const [users] = await conn.query(`
-            SELECT id, nom, email, telephone, created_at 
-            FROM users 
+            SELECT 
+                u.id,
+                u.nom,
+                u.email,
+                u.telephone,
+                u.created_at,
+                COUNT(s.id) as total_submissions,
+                COALESCE(ROUND(AVG(s.percentage), 1), 0) as avg_percentage,
+                MAX(s.submitted_at) as last_activity
+            FROM users u
+            LEFT JOIN submissions s ON s.user_id = u.id
+            GROUP BY u.id, u.nom, u.email, u.telephone, u.created_at
             ORDER BY created_at DESC
         `);
         conn.release();
@@ -201,9 +211,12 @@ exports.getUserDetails = async (req, res) => {
 
         // Récupérer les statistiques des soumissions
         const [submissions] = await conn.query(`
-            SELECT COUNT(*) as total_submissions,
-                   SUM(CASE WHEN status = 'soumis' THEN 1 ELSE 0 END) as completed_exams,
-                   AVG(CASE WHEN status = 'soumis' THEN score END) as avg_score
+             SELECT
+                 COUNT(*) as total_submissions,
+                 COUNT(DISTINCT exam_code) as completed_exams,
+                 COALESCE(ROUND(AVG(percentage), 1), 0) as avg_score,
+                 SUM(CASE WHEN percentage >= 80 THEN 1 ELSE 0 END) as passed_exams,
+                 MAX(submitted_at) as last_activity
             FROM submissions
             WHERE user_id = ?
         `, [userId]);
