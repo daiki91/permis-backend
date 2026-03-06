@@ -162,17 +162,19 @@ exports.getProfile = async (req, res) => {
 // Récupérer tous les utilisateurs (pour admin)
 exports.getAllUsers = async (req, res) => {
     try {
+        console.log('[ADMIN] Récupération de tous les utilisateurs...');
         const conn = await pool.getConnection();
         const [users] = await conn.query(`
-            SELECT id, nom, prenom, email, telephone, created_at 
+            SELECT id, nom, email, telephone, created_at 
             FROM users 
             ORDER BY created_at DESC
         `);
         conn.release();
-
+        
+        console.log(`[ADMIN] ${users.length} utilisateurs récupérés`);
         res.json(users);
     } catch (error) {
-        console.error("Erreur lors de la récupération des utilisateurs:", error);
+        console.error("[ADMIN] Erreur lors de la récupération des utilisateurs:", error);
         res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
 };
@@ -181,17 +183,19 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserDetails = async (req, res) => {
     try {
         const { userId } = req.params;
+        console.log(`[ADMIN] Récupération détails utilisateur id=${userId}`);
         const conn = await pool.getConnection();
         
         // Récupérer les infos de l'utilisateur
         const [users] = await conn.query(`
-            SELECT id, nom, prenom, email, telephone, created_at 
+            SELECT id, nom, email, telephone, created_at 
             FROM users 
             WHERE id = ?
         `, [userId]);
 
         if (users.length === 0) {
             conn.release();
+            console.log(`[ADMIN] Utilisateur id=${userId} non trouvé`);
             return res.status(404).json({ message: "Utilisateur non trouvé" });
         }
 
