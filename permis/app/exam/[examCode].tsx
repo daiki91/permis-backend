@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import { submissionsApi, API_BASE_URL } from '@/services/api';
+import ZoomableImage from '@/components/zoomable-image';
 
 type ExamQuestion = {
   number: number;
@@ -229,10 +229,10 @@ export default function ExamScreen() {
         </Text>
       </View>
 
-      <Image 
-        source={{ uri: currentQuestion.imagePath }} 
+      <ZoomableImage
+        uri={currentQuestion.imagePath}
         style={styles.image}
-        onError={(error) => {
+        onError={() => {
           console.log('Image load error for', currentQuestion.imagePath);
         }}
       />
