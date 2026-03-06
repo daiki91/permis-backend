@@ -900,6 +900,15 @@
                     <h2>Liste des utilisateurs</h2>
                 </div>
 
+                <div class="form-group" style="max-width: 280px; margin-bottom: 16px;">
+                    <label for="userActivityFilter">Filtrer par activité</label>
+                    <select id="userActivityFilter" onchange="applyUserActivityFilter()">
+                        <option value="all">Tous les utilisateurs</option>
+                        <option value="active">Utilisateurs actifs</option>
+                        <option value="inactive">Utilisateurs inactifs</option>
+                    </select>
+                </div>
+
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -1122,6 +1131,7 @@
     const API_URL = "https://permis-backend-6ddi.onrender.com";
     let adminToken = localStorage.getItem("adminToken");
     let currentExamId = null;
+    let usersCache = [];
 
     // Auth Handlers
     async function handleLogin(event) {
@@ -1527,6 +1537,57 @@
         alert(`Détails de la soumission ${submissionId}`);
     }
 
+    function renderUsersTable(users) {
+        const usersHTML = users.map(user => {
+            const totalSubmissions = Number(user.total_submissions || 0);
+            const isActive = totalSubmissions > 0;
+            const statusBadge = isActive
+                ? '<span style="padding: 4px 8px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: 12px; font-weight: 600;">Actif</span>'
+                : '<span style="padding: 4px 8px; border-radius: 999px; background: #fee2e2; color: #991b1b; font-size: 12px; font-weight: 600;">Inactif</span>';
+
+            return `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.nom || '-'}</td>
+                    <td>${user.email}</td>
+                    <td>${user.telephone || '-'}</td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <span>${totalSubmissions} examen(s)</span>
+                            ${statusBadge}
+                        </div>
+                    </td>
+                    <td>${Number(user.avg_percentage || 0).toFixed(1)}%</td>
+                    <td>${user.last_activity ? new Date(user.last_activity).toLocaleDateString('fr-FR') : '-'}</td>
+                    <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-small btn-primary" onclick="viewUserDetails(${user.id})">Détails</button>
+                            <button class="btn btn-small btn-danger" onclick="deleteUserAccount(${user.id}, '${user.email}')">Supprimer</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        document.getElementById("usersTable").innerHTML = usersHTML || `
+            <tr><td colspan="9"><div class="empty-state"><p>Aucun utilisateur correspondant au filtre</p></div></td></tr>
+        `;
+    }
+
+    function applyUserActivityFilter() {
+        const filterValue = document.getElementById("userActivityFilter")?.value || "all";
+
+        const filteredUsers = usersCache.filter(user => {
+            const isActive = Number(user.total_submissions || 0) > 0;
+            if (filterValue === "active") return isActive;
+            if (filterValue === "inactive") return !isActive;
+            return true;
+        });
+
+        renderUsersTable(filteredUsers);
+    }
+
     // Users Management
     async function loadUsers() {
         try {
@@ -1539,30 +1600,9 @@
             }
 
             const users = await response.json();
+            usersCache = users;
             document.getElementById("userCount").textContent = users.length;
-
-            const usersHTML = users.map(user => `
-                <tr>
-                    <td>${user.id}</td>
-                    <td>${user.nom || '-'}</td>
-                    <td>${user.email}</td>
-                    <td>${user.telephone || '-'}</td>
-                    <td>${user.total_submissions || 0} examen(s)</td>
-                    <td>${Number(user.avg_percentage || 0).toFixed(1)}%</td>
-                    <td>${user.last_activity ? new Date(user.last_activity).toLocaleDateString('fr-FR') : '-'}</td>
-                    <td>${new Date(user.created_at).toLocaleDateString('fr-FR')}</td>
-                    <td>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-small btn-primary" onclick="viewUserDetails(${user.id})">Détails</button>
-                            <button class="btn btn-small btn-danger" onclick="deleteUserAccount(${user.id}, '${user.email}')">Supprimer</button>
-                        </div>
-                    </td>
-                </tr>
-            `).join("");
-
-            document.getElementById("usersTable").innerHTML = usersHTML || `
-                <tr><td colspan="9"><div class="empty-state"><p>Aucun utilisateur inscrit</p></div></td></tr>
-            `;
+            applyUserActivityFilter();
         } catch (error) {
             console.error("Erreur:", error);
             document.getElementById("usersTable").innerHTML = `
