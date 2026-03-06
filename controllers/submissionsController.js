@@ -35,7 +35,7 @@ exports.submitExam = async (req, res) => {
     `;
 
     const connection = await pool.getConnection();
-    await connection.execute(query, [
+    await connection.query(query, [
       userId,
       examCode,
       JSON.stringify(answers),
@@ -153,7 +153,7 @@ exports.getUserResults = async (req, res) => {
     `;
 
     const connection = await pool.getConnection();
-    const [results] = await connection.execute(query, [userId]);
+    const [results] = await connection.query(query, [userId]);
     connection.release();
 
     return res.status(200).json({
@@ -189,7 +189,7 @@ exports.getExamResult = async (req, res) => {
     `;
 
     const connection = await pool.getConnection();
-    const [results] = await connection.execute(query, [userId, examCode]);
+    const [results] = await connection.query(query, [userId, examCode]);
     connection.release();
 
     if (results.length === 0) {
@@ -237,7 +237,7 @@ exports.getExamSubmissions = async (req, res) => {
     `;
 
     const connection = await pool.getConnection();
-    const [results] = await connection.execute(query, [examId]);
+    const [results] = await connection.query(query, [examId]);
     connection.release();
 
     return res.status(200).json({

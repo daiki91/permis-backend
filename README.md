@@ -2,12 +2,14 @@
 
 Backend Node.js/Express pour la gestion des examens de permis de conduire.
 
+**Stack:** Node.js/Express + PostgreSQL (Supabase) + JWT
+
 ## Installation
 
 ### Prérequis
 - Node.js (v16+)
-- MariaDB/MySQL
 - npm
+- Compte Supabase (gratuit)
 
 ### Étapes d'installation
 
@@ -16,26 +18,38 @@ Backend Node.js/Express pour la gestion des examens de permis de conduire.
 npm install
 ```
 
-2. **Créer la base de données MariaDB**
-```bash
-mysql -u root -p < database.sql
-```
-
-3. **Configurer le fichier .env**
+2. **Configurer le fichier .env**
 ```bash
 cp .env.example .env
 ```
 
-Ensuite, éditez le fichier `.env` avec vos paramètres:
-```
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=permis
+Éditez le fichier `.env` avec vos paramètres Supabase:
+```bash
+# Supabase PostgreSQL - Direct Connection
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD_ENCODED@db.YOUR_PROJECT_ID.supabase.co:5432/postgres
+DB_HOST=db.YOUR_PROJECT_ID.supabase.co
+DB_USER=postgres
+DB_PASSWORD=YOUR_PASSWORD
+DB_NAME=postgres
+DB_PORT=5432
+
+# Supabase API Keys
+SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+SUPABASE_ANON_KEY=YOUR_ANON_KEY
+
+# Server & Auth
 PORT=5000
+NODE_ENV=development
 JWT_SECRET=your_secret_key_change_in_production
 JWT_EXPIRE=7d
 UPLOADS_DIR=./uploads
+```
+
+**Important:** Si votre mot de passe contient `@`, encodez-le en `%40` dans DATABASE_URL.
+
+3. **Initialiser la base de données**
+```bash
+node database_init.js
 ```
 
 4. **Démarrer le serveur**
@@ -48,6 +62,10 @@ npm start
 ```
 
 Le serveur démarre sur `http://localhost:5000`
+
+## Migration de MariaDB vers Supabase
+
+Voir [SUPABASE_MIGRATION.md](./SUPABASE_MIGRATION.md) pour les détails techniques sur la migration.
 
 ## Structure du projet
 
