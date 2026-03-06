@@ -34,6 +34,7 @@ export default function ExamScreen() {
   const [exam, setExam] = useState<Exam | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string[]>>({});
+  const [showSummary, setShowSummary] = useState(false);
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -85,13 +86,20 @@ export default function ExamScreen() {
     }));
   };
 
-  const onSubmit = async () => {
+  const handleValidateClick = () => {
+    // Show summary modal
+    setShowSummary(true);
+  };
+
+  const onConfirmSubmit = async () => {
     if (!user?.id || !examCode) {
       Alert.alert('Erreur', 'Utilisateur non connecté.');
       return;
     }
 
     setSubmitting(true);
+    setShowSummary(false);
+    
     try {
       // Convert answers to format expected by backend
       // Backend expects { "1": ["A"], "2": ["B", "C"], ... }
@@ -127,11 +135,99 @@ export default function ExamScreen() {
   }
 
   const isLast = index === exam.questions.length - 1;
+  const answeredCount = Object.keys(answers).filter(key => answers[Number(key)]?.length > 0).length;
+  const totalQuestions = exam.questions.length;
+
+  const renderSummaryModal = () => {
+    if (!showSummary) return null;
+
+    const unansweredQuestions = exam.questions
+      .filter(q => !answers[q.number] || answers[q.number].length === 0)
+      .map(q => q.number);
+
+    return (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>📋 Récapitulatif de l'examen</Text>
+          
+          <View style={styles.summaryStats}>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{answeredCount}</Text>
+              <Text style={styles.statLabel}>Répondues</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={[styles.statValue, { color: '#ef4444' }]}>
+                {totalQuestions - answeredCount}
+              </Text>
+              <Text style={styles.statLabel}>Non répondues</Text>
+            </View>
+          </View>
+
+          {unansweredQuestions.length > 0 && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningTitle}>⚠️ Questions non répondues:</Text>
+              <Text style={styles.warningText}>
+                {unansweredQuestions.join(', ')}
+              </Text>
+              <Text style={styles.warningSubtext}>
+                Les questions non répondues seront comptées comme incorrectes.
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.questionGrid}>
+            {exam.questions.map((q) => {
+              const answered = answers[q.number] && answers[q.number].length > 0;
+              return handleValidateClick} 
+            disabled={submitting}>
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.navText}>Valider l'examen</Text>}
+          </Pressable>
+        )}
+      </View>
+
+      {renderSummaryModal()}       answered ? styles.gridItemAnswered : styles.gridItemUnanswered,
+                  ]}
+                  onPress={() => {
+                    setIndex(q.number - 1);
+                    setShowSummary(false);
+                  }}>
+                  <Text style={[styles.gridText, answered && styles.gridTextAnswered]}>
+                    {q.number}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.modalActions}>
+            <Pressable
+              style={[styles.modalButton, styles.modalButtonSecondary]}
+              onPress={() => setShowSummary(false)}>
+              <Text style={styles.modalButtonTextSecondary}>Continuer l'examen</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.modalButton, styles.modalButtonPrimary]}
+              onPress={onConfirmSubmit}
+              disabled={submitting}>
+              <Text style={styles.modalButtonText}>
+                {submitting ? 'Envoi...' : 'Valider définitivement'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.examTitle}>{exam.code} - {exam.title}</Text>
-      <Text style={styles.progress}>Question {index + 1} / {exam.questions.length}</Text>
+      <View style={styles.progressContainer}>
+        <Text style={styles.progress}>Question {index + 1} / {exam.questions.length}</Text>
+        <Text style={[styles.answeredBadge, answeredCount === totalQuestions && styles.answeredComplete]}>
+          {answeredCount}/{totalQuestions} répondues
+        </Text>
+      </View>
 
       <Image 
         source={{ uri: currentQuestion.imagePath }} 
@@ -182,9 +278,26 @@ export default function ExamScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f7fb' },
-  container: { padding: 16, backgroundColor: '#f4f7fb', gap: 10, paddingBottom: 32 },
-  examTitle: { fontSize: 18, fontWeight: '700', color: '#102a43' },
-  progress: { color: '#486581', marginBottom: 4, fontSize: 14 },
+  containeContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  progress: { color: '#486581', fontSize: 14 },
+  answeredBadge: {
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  answeredComplete: {
+    backgroundColor: '#dcfce7',
+    color: '#16a34a',
+  },
   image: {
     width: '100%',
     height: 260,
@@ -213,6 +326,140 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navButtonDisabled: { opacity: 0.35 },
+  submitButton: { backgroundColor: '#0f4c81' },
+  navText: { color: '#fff', fontWeight: '700' },
+  
+  // Modal styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '90%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#102a43',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  summaryStats: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#f4f7fb',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#0f4c81',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#486581',
+    marginTop: 4,
+  },
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  warningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400e',
+    marginBottom: 6,
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#92400e',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  warningSubtext: {
+    fontSize: 12,
+    color: '#78350f',
+    fontStyle: 'italic',
+  },
+  questionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+    maxHeight: 200,
+  },
+  gridItem: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  gridItemAnswered: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#16a34a',
+  },
+  gridItemUnanswered: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#dc2626',
+  },
+  gridText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#dc2626',
+  },
+  gridTextAnswered: {
+    color: '#16a34a',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#0f4c81',
+  },
+  modalButtonSecondary: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#0f4c81',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  modalButtonTextSecondary: {
+    color: '#0f4c81',
+    fontWeight: '700',
+    fontSize: 14,
+ 
   submitButton: { backgroundColor: '#0f4c81' },
   navText: { color: '#fff', fontWeight: '700' },
 });
