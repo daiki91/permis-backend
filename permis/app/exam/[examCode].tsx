@@ -35,6 +35,7 @@ export default function ExamScreen() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string[]>>({});
   const [showSummary, setShowSummary] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -71,6 +72,15 @@ export default function ExamScreen() {
   const selected = answers[currentQuestion?.number || 0] || [];
 
   const toggleLetter = (letter: string) => {
+    // Bloquer les modifications si l'examen est déjà soumis
+    if (isSubmitted) {
+      Alert.alert(
+        'Examen déjà validé',
+        'Vous ne pouvez plus modifier vos réponses après validation définitive.'
+      );
+      return;
+    }
+
     if (!currentQuestion) {
       return;
     }
@@ -113,6 +123,9 @@ export default function ExamScreen() {
       console.log('Submitting exam:', { userId: user.id, examCode, answersCount: Object.keys(payload).length });
       
       const response = await submissionsApi.submitExam(user.id, examCode, payload);
+      
+      // Marquer l'examen comme soumis pour bloquer les modifications
+      setIsSubmitted(true);
       
       // Store result data and navigate to result screen
       router.push({
@@ -249,6 +262,12 @@ export default function ExamScreen() {
         }}
       />
 
+      {isSubmitted && (
+        <View style={styles.submittedBanner}>
+          <Text style={styles.submittedText}>✅ Examen validé - Modifications bloquées</Text>
+        </View>
+      )}
+
       <View style={styles.optionsWrap}>
         {LETTERS.map((letter) => {
           const active = selected.includes(letter);
@@ -256,7 +275,12 @@ export default function ExamScreen() {
             <Pressable
               key={letter}
               onPress={() => toggleLetter(letter)}
-              style={[styles.option, active && styles.optionActive]}>
+              disabled={isSubmitted}
+              style={[
+                styles.option, 
+                active && styles.optionActive,
+                isSubmitted && styles.optionDisabled
+              ]}>
               <Text style={[styles.optionText, active && styles.optionTextActive]}>{letter}</Text>
             </Pressable>
           );
@@ -266,18 +290,22 @@ export default function ExamScreen() {
       <View style={styles.nav}>
         <Pressable
           style={[styles.navButton, index === 0 && styles.navButtonDisabled]}
-          disabled={index === 0}
+          disabled={index === 0 || isSubmitted}
           onPress={() => setIndex((v) => v - 1)}>
           <Text style={styles.navText}>Précédent</Text>
         </Pressable>
 
         {!isLast ? (
-          <Pressable style={styles.navButton} onPress={() => setIndex((v) => v + 1)}>
+          <Pressable 
+            style={styles.navButton} 
+            disabled={isSubmitted}
+            onPress={() => setIndex((v) => v + 1)}>
             <Text style={styles.navText}>Suivant</Text>
           </Pressable>
         ) : (
           <Pressable 
-            style={[styles.navButton, styles.submitButton]} 
+            style={[styles.navButton, styles.submitButton, isSubmitted && styles.navButtonDisabled]} 
+            disabled={isSubmitted}
             onPress={handleValidateClick}>
             <Text style={styles.navText}>Valider l'examen</Text>
           </Pressable>
@@ -356,12 +384,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f4c81', 
     borderColor: '#0f4c81' 
   },
+  optionDisabled: {
+    opacity: 0.4,
+    backgroundColor: '#e0e6ed',
+  },
   optionText: { 
     fontWeight: '700', 
     color: '#243b53' 
   },
   optionTextActive: { 
     color: '#fff' 
+  },
+  submittedBanner: {
+    backgroundColor: '#d1fae5',
+    borderWidth: 2,
+    borderColor: '#10b981',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  submittedText: {
+    color: '#065f46',
+    fontSize: 15,
+    fontWeight: '700',
   },
   nav: { 
     flexDirection: 'row', 

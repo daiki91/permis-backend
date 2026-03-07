@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -27,6 +28,62 @@ type ResultData = {
   isPassed: boolean;
   details: DetailItem[];
 };
+
+/**
+ * Génère une appréciation motivante basée sur le score
+ */
+function getAppreciation(percentage: number): { emoji: string; title: string; message: string; color: string } {
+  if (percentage >= 95) {
+    return {
+      emoji: '🏆',
+      title: 'EXCELLENT !',
+      message: 'Performance exceptionnelle ! Vous maîtrisez parfaitement le sujet.',
+      color: '#eab308',
+    };
+  } else if (percentage >= 85) {
+    return {
+      emoji: '🎉',
+      title: 'TRÈS BIEN !',
+      message: 'Bravo ! Vous avez largement dépassé le seuil de réussite.',
+      color: '#22c55e',
+    };
+  } else if (percentage >= 80) {
+    return {
+      emoji: '✅',
+      title: 'RÉUSSI !',
+      message: 'Félicitations ! Vous avez obtenu votre examen.',
+      color: '#22c55e',
+    };
+  } else if (percentage >= 70) {
+    return {
+      emoji: '💪',
+      title: 'PRESQUE !',
+      message: 'Vous êtes tout proche ! Encore un petit effort et c\'est gagné.',
+      color: '#f59e0b',
+    };
+  } else if (percentage >= 60) {
+    return {
+      emoji: '📚',
+      title: 'BIEN ESSAYÉ',
+      message: 'Vous progressez ! Révisez les points faibles et réessayez.',
+      color: '#f59e0b',
+    };
+  } else if (percentage >= 40) {
+    return {
+      emoji: '🎯',
+      title: 'CONTINUEZ !',
+      message: 'Vous avez des bases. Concentrez-vous sur les erreurs et persévérez.',
+      color: '#ef4444',
+    };
+  } else {
+    return {
+      emoji: '💡',
+      title: 'NE LÂCHEZ PAS !',
+      message: 'Chaque tentative vous rapproche du succès. Révisez et recommencez !',
+      color: '#ef4444',
+    };
+  }
+}
 
 export default function ResultScreen() {
   const { examCode, userId } = useLocalSearchParams<{ examCode: string; userId: string }>();
@@ -84,9 +141,18 @@ export default function ResultScreen() {
 
   const isPassed = result.percentage >= 80;
   const passStyle = isPassed ? styles.badgePass : styles.badgeFail;
+  const appreciation = getAppreciation(result.percentage);
+  
+  // Calculer les statistiques
+  const wrongAnswers = result.details.filter(d => !d.isCorrect);
+  const unansweredCount = result.details.filter(d => d.userAnswers.length === 0).length;
 
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={true}>
+      
       <Text style={styles.title}>Résultat {result.examCode}</Text>
       
       <View style={[styles.badge, passStyle]}>
@@ -96,65 +162,121 @@ export default function ResultScreen() {
       <Text style={styles.score}>{result.percentage}%</Text>
       <Text style={styles.meta}>{result.correctCount} / {result.totalQuestions} bonnes réponses</Text>
 
-      <Text style={styles.sectionTitle}>Détails par question</Text>
+      {/* Appréciation motivante */}
+      <View style={[styles.appreciationCard, { borderLeftColor: appreciation.color }]}>
+        <Text style={styles.appreciationEmoji}>{appreciation.emoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.appreciationTitle, { color: appreciation.color }]}>
+            {appreciation.title}
+          </Text>
+          <Text style={styles.appreciationMessage}>{appreciation.message}</Text>
+        </View>
+      </View>
+
+      {/* Statistiques supplémentaires */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{result.correctCount}</Text>
+          <Text style={styles.statLabel}>✅ Correctes</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, { color: '#ef4444' }]}>
+            {wrongAnswers.length - unansweredCount}
+          </Text>
+          <Text style={styles.statLabel}>❌ Erreurs</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, { color: '#f59e0b' }]}>{unansweredCount}</Text>
+          <Text style={styles.statLabel}>⚠️ Non répondues</Text>
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>
+        📋 Détails par question ({wrongAnswers.length} {wrongAnswers.length > 1 ? 'erreurs' : 'erreur'})
+      </Text>
       
-      <FlatList
-        data={result.details || []}
-        keyExtractor={(item) => String(item.questionNum)}
-        scrollEnabled={false}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <View style={[styles.row, item.isCorrect ? styles.rowCorrect : styles.rowWrong]}>
-            <View style={styles.questionNumber}>
-              <Text style={[styles.qNum, item.isCorrect ? styles.textCorrect : styles.textWrong]}>
-                {item.questionNum}
+      {result.details.map((item) => (
+        <View 
+          key={item.questionNum}
+          style={[styles.row, item.isCorrect ? styles.rowCorrect : styles.rowWrong]}>
+          <View style={[
+            styles.questionNumber,
+            item.isCorrect 
+              ? { backgroundColor: '#dcfce7', borderColor: '#22c55e' }
+              : { backgroundColor: '#fee2e2', borderColor: '#ef4444' }
+          ]}>
+            <Text style={[styles.qNum, item.isCorrect ? styles.textCorrect : styles.textWrong]}>
+              {item.questionNum}
+            </Text>
+          </View>
+          <View style={styles.answerSection}>
+            <Text style={styles.labelUser}>
+              {item.isCorrect ? '✅ Votre réponse (correcte)' : '❌ Votre réponse'}
+            </Text>
+            <View style={[
+              styles.answerBadge, 
+              item.isCorrect 
+                ? { backgroundColor: '#dcfce7', borderColor: '#22c55e' } 
+                : { backgroundColor: '#fee2e2', borderColor: '#ef4444' }
+            ]}>
+              <Text style={[
+                styles.answerText,
+                item.isCorrect ? styles.textCorrect : styles.textWrong
+              ]}>
+                {item.userAnswers.length > 0 ? item.userAnswers.join(', ') : '- (Non répondue)'}
               </Text>
             </View>
-            <View style={styles.answerSection}>
-              <Text style={styles.labelUser}>Votre réponse:</Text>
-              <View style={[styles.answerBadge, item.isCorrect ? { backgroundColor: '#dcfce7' } : { backgroundColor: '#fee2e2' }]}>
-                <Text style={item.isCorrect ? styles.textCorrect : styles.textWrong}>
-                  {item.userAnswers.length > 0 ? item.userAnswers.join(', ') : '-'}
-                </Text>
-              </View>
-              
-              <Text style={styles.labelCorrect}>Réponse correcte:</Text>
-              <View style={{ backgroundColor: '#dbeafe', borderRadius: 6, padding: 8 }}>
-                <Text style={{ color: '#0f4c81', fontWeight: '600' }}>
-                  {item.correctAnswers.length > 0 ? item.correctAnswers.join(', ') : '-'}
-                </Text>
-              </View>
-            </View>
+            
+            {!item.isCorrect && (
+              <>
+                <Text style={styles.labelCorrect}>✓ Réponse correcte</Text>
+                <View style={styles.correctAnswerBadge}>
+                  <Text style={styles.correctAnswerText}>
+                    {item.correctAnswers.join(', ')}
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
-        )}
-      />
+        </View>
+      ))}
 
       <View style={styles.actions}>
         <Pressable style={styles.button} onPress={() => router.replace('/exams')}>
-          <Text style={styles.buttonText}>Retour aux examens</Text>
+          <Text style={styles.buttonText}>📚 Retour aux examens</Text>
         </Pressable>
         <Pressable
           style={[styles.button, styles.secondary]}
           onPress={() => {
             router.push({ pathname: '/exam/[examCode]', params: { examCode: result.examCode } });
           }}>
-          <Text style={styles.buttonText}>Refaire l'examen</Text>
+          <Text style={styles.buttonText}>🔄 Refaire</Text>
         </Pressable>
       </View>
-    </View>
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#f4f7fb', 
+    backgroundColor: '#f4f7fb',
+  },
+  scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 32,
   },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
   title: { 
-    fontSize: 22, 
+    fontSize: 24, 
     fontWeight: '800', 
     color: '#102a43', 
     textAlign: 'center',
@@ -163,16 +285,26 @@ const styles = StyleSheet.create({
   badge: { 
     alignSelf: 'center', 
     borderRadius: 999, 
-    paddingHorizontal: 20, 
-    paddingVertical: 8, 
+    paddingHorizontal: 24, 
+    paddingVertical: 10, 
     marginVertical: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   badgePass: { backgroundColor: '#22c55e' },
   badgeFail: { backgroundColor: '#ef4444' },
-  badgeText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  score: { 
-    fontSize: 48, 
+  badgeText: { 
+    color: '#fff', 
     fontWeight: '800', 
+    fontSize: 16,
+    letterSpacing: 1,
+  },
+  score: { 
+    fontSize: 56, 
+    fontWeight: '900', 
     textAlign: 'center', 
     color: '#0f4c81', 
     marginVertical: 8,
@@ -180,63 +312,182 @@ const styles = StyleSheet.create({
   meta: { 
     textAlign: 'center', 
     color: '#486581', 
-    marginBottom: 16,
+    marginBottom: 20,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  appreciationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderLeftWidth: 4,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  appreciationEmoji: {
+    fontSize: 36,
+  },
+  appreciationTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  appreciationMessage: {
     fontSize: 14,
+    color: '#486581',
+    lineHeight: 20,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#22c55e',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#486581',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#102a43',
-    marginVertical: 12,
-    marginTop: 20,
+    marginBottom: 16,
+    marginTop: 8,
   },
-  list: { gap: 8, paddingBottom: 20 },
   row: { 
     backgroundColor: '#fff', 
     borderRadius: 12, 
-    padding: 12, 
-    marginBottom: 8,
+    padding: 14, 
+    marginBottom: 12,
     borderLeftWidth: 4,
     flexDirection: 'row',
     gap: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   rowCorrect: { borderLeftColor: '#22c55e' },
   rowWrong: { borderLeftColor: '#ef4444' },
   questionNumber: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0e6ed',
+    borderWidth: 2,
   },
-  qNum: { fontWeight: '700', fontSize: 16 },
-  textCorrect: { color: '#22c55e', fontWeight: '700' },
-  textWrong: { color: '#ef4444', fontWeight: '700' },
-  answerSection: { flex: 1 },
-  labelUser: { fontWeight: '600', color: '#486581', fontSize: 12, marginBottom: 4 },
-  labelCorrect: { fontWeight: '600', color: '#486581', fontSize: 12, marginBottom: 4, marginTop: 8 },
+  qNum: { 
+    fontWeight: '800', 
+    fontSize: 17,
+  },
+  textCorrect: { 
+    color: '#22c55e', 
+    fontWeight: '700',
+  },
+  textWrong: { 
+    color: '#ef4444', 
+    fontWeight: '700',
+  },
+  answerSection: { 
+    flex: 1,
+  },
+  labelUser: { 
+    fontWeight: '700', 
+    color: '#486581', 
+    fontSize: 13, 
+    marginBottom: 6,
+  },
+  labelCorrect: { 
+    fontWeight: '700', 
+    color: '#486581', 
+    fontSize: 13, 
+    marginBottom: 6, 
+    marginTop: 10,
+  },
   answerBadge: { 
-    borderRadius: 6, 
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginBottom: 8,
+    borderRadius: 8, 
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+  },
+  answerText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  correctAnswerBadge: {
+    backgroundColor: '#dbeafe',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#0f4c81',
+  },
+  correctAnswerText: {
+    color: '#0f4c81',
+    fontWeight: '700',
+    fontSize: 15,
   },
   actions: { 
     flexDirection: 'row', 
-    gap: 10, 
-    marginTop: 16,
-    marginBottom: 20,
+    gap: 12, 
+    marginTop: 24,
+    marginBottom: 8,
   },
   button: { 
     flex: 1, 
     backgroundColor: '#0f4c81', 
-    borderRadius: 10, 
-    padding: 14, 
+    borderRadius: 12, 
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  secondary: { backgroundColor: '#334e68' },
-  buttonText: { color: '#fff', fontWeight: '700' },
-  errorText: { color: '#486581', fontSize: 16, textAlign: 'center' },
+  secondary: { 
+    backgroundColor: '#334e68',
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  errorText: { 
+    color: '#486581', 
+    fontSize: 16, 
+    textAlign: 'center',
+    lineHeight: 24,
+  },
 });
