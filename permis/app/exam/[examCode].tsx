@@ -102,12 +102,16 @@ export default function ExamScreen() {
     
     try {
       // Convert answers to format expected by backend
-      // Backend expects { "1": ["A"], "2": ["B", "C"], ... }
-      const payload = Object.keys(answers).reduce((acc, key) => {
-        acc[key] = answers[Number(key)] || [];
-        return acc;
-      }, {} as Record<string, string[]>);
+      // Backend expects ALL 25 questions: { "1": ["A"], "2": ["B", "C"], ... }
+      const payload: Record<string, string[]> = {};
+      
+      // Include all 25 questions, even if not answered (empty array)
+      for (let i = 1; i <= 25; i++) {
+        payload[i.toString()] = answers[i] || [];
+      }
 
+      console.log('Submitting exam:', { userId: user.id, examCode, answersCount: Object.keys(payload).length });
+      
       const response = await submissionsApi.submitExam(user.id, examCode, payload);
       
       // Store result data and navigate to result screen
@@ -119,8 +123,18 @@ export default function ExamScreen() {
         },
       });
     } catch (error: any) {
-      Alert.alert('Soumission échouée', error?.response?.data?.message || 'Réessayez dans quelques secondes.');
-      console.error('Submission error:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || 'Réessayez dans quelques secondes.';
+      console.error('Submission error:', {
+        message: errorMsg,
+        status: error?.response?.status,
+        data: error?.response?.data,
+        fullError: error
+      });
+      Alert.alert(
+        'Soumission échouée', 
+        errorMsg,
+        [{ text: 'OK', onPress: () => setShowSummary(true) }]
+      );
     } finally {
       setSubmitting(false);
     }
@@ -388,16 +402,16 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '90%',
+    padding: 24,
+    width: '95%',
+    maxWidth: 600,
+    maxHeight: '85%',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#102a43',
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: 'center',
   },
   summaryStats: {
@@ -409,18 +423,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f4f7fb',
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 36,
+    fontWeight: '900',
     color: '#0f4c81',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '600',
     color: '#486581',
-    marginTop: 4,
+    marginTop: 6,
   },
   warningBox: {
     backgroundColor: '#fef3c7',
@@ -448,14 +463,14 @@ const styles = StyleSheet.create({
   questionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
-    maxHeight: 200,
+    gap: 10,
+    marginBottom: 24,
+    maxHeight: 250,
   },
   gridItem: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -469,8 +484,8 @@ const styles = StyleSheet.create({
     borderColor: '#dc2626',
   },
   gridText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#dc2626',
   },
   gridTextAnswered: {
@@ -483,7 +498,7 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   modalButtonPrimary: {
@@ -497,11 +512,11 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
   },
   modalButtonTextSecondary: {
     color: '#0f4c81',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
   },
 });
