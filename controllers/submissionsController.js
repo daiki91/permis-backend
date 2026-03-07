@@ -5,6 +5,7 @@ const corrections = require("../correction");
  * Soumettre un examen et calculer la note automatiquement
  */
 exports.submitExam = async (req, res) => {
+  let connection;
   try {
     const { userId, examCode, answers } = req.body;
 
@@ -25,8 +26,10 @@ exports.submitExam = async (req, res) => {
       });
     }
 
+    const normalizedAnswers = normalizeAnswersPayload(answers);
+
     // Corriger les réponses
-    const correctionResult = correctExam(examCode, answers);
+    const correctionResult = correctExam(examCode, normalizedAnswers);
 
     // Enregistrer la soumission en BD
     const query = `
@@ -34,16 +37,15 @@ exports.submitExam = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, NOW())
     `;
 
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
     await connection.query(query, [
       userId,
       examCode,
-      JSON.stringify(answers),
+      JSON.stringify(normalizedAnswers),
       correctionResult.correctCount,
       correctionResult.totalQuestions,
       correctionResult.percentage,
     ]);
-    connection.release();
 
     // Retourner le résultat
     return res.status(200).json({
@@ -60,11 +62,28 @@ exports.submitExam = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erreur soumission examen:', error);
+    console.error('Erreur soumission examen:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+    });
+
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'Une soumission identique existe deja. Reessayez dans quelques secondes.'
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la soumission'
     });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 };
 /**
@@ -88,12 +107,12 @@ function correctExam(examCode, answers) {
   // Il faut la convertir en array ['B', 'D']
   for (let questionNum = 1; questionNum <= totalQuestions; questionNum++) {
     const correctLetters = convertCorrectAnswer(correctAnswers[questionNum - 1]);
-    const userAnswers = answers[questionNum] || [];
+    const userAnswers = normalizeAnswerSelection(answers[questionNum]);
 
     // Vérifier si les réponses de l'utilisateur sont exactement correctes
     const isCorrect = arraysEqual(
-      userAnswers.sort(),
-      correctLetters.sort()
+      sortedCopy(userAnswers),
+      sortedCopy(correctLetters)
     );
 
     if (isCorrect) {
@@ -126,7 +145,54 @@ function convertCorrectAnswer(answer) {
   if (!answer || typeof answer !== 'string') {
     return [];
   }
-  return answer.split('');
+  return answer
+    .split('')
+    .map((letter) => letter.trim().toUpperCase())
+    .filter((letter) => /^[A-Z]$/.test(letter));
+}
+
+/**
+ * Normaliser l'objet answers recu du client.
+ */
+function normalizeAnswersPayload(answers) {
+  const normalized = {};
+
+  for (let questionNum = 1; questionNum <= 25; questionNum++) {
+    const raw = answers[questionNum] ?? answers[String(questionNum)];
+    normalized[questionNum] = normalizeAnswerSelection(raw);
+  }
+
+  return normalized;
+}
+
+/**
+ * Normaliser une reponse en tableau de lettres majuscules (A-Z).
+ */
+function normalizeAnswerSelection(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => String(v).trim().toUpperCase())
+      .filter((v) => /^[A-Z]$/.test(v));
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    const parts = trimmed.includes(',')
+      ? trimmed.split(',')
+      : trimmed.split('');
+
+    return parts
+      .map((v) => v.trim().toUpperCase())
+      .filter((v) => /^[A-Z]$/.test(v));
+  }
+
+  return [];
+}
+
+function sortedCopy(arr) {
+  return [...arr].sort();
 }
 
 /**
