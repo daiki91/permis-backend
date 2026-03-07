@@ -12,3 +12,5 @@ let corrections = {
     B11: ['AD', 'BD', 'BD', 'AD', 'A', 'B', 'A', 'B', 'BC', 'B', 'B', 'B', 'AC', 'A', 'B', 'AC', 'A', 'BC', 'A', 'BC', 'B', 'A', 'AD', 'B', 'A'],
     B12: ['AD', 'BD', 'B', 'BC', 'B', 'A', 'A', 'A', 'B', 'B', 'B', 'B', 'BC', 'AD', 'B', 'BC', 'BC', 'A', 'A', 'B', 'A', 'A', 'B', 'BC', 'B'],
 };
+
+module.exports = corrections;
