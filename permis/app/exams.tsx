@@ -60,9 +60,14 @@ export default function ExamsScreen() {
           <Text style={styles.greeting}>Bienvenue, {user?.nom?.split(' ')[0] || 'Utilisateur'}</Text>
           <Text style={styles.subtitle}>Sélectionnez un examen</Text>
         </View>
-        <Pressable onPress={handleLogout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Déconnecter</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => router.push('/submissions')} style={styles.historyBtn}>
+            <Text style={styles.historyText}>Mes soumissions</Text>
+          </Pressable>
+          <Pressable onPress={handleLogout} style={styles.logoutBtn}>
+            <Text style={styles.logoutText}>Déconnecter</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Exams Grid */}
@@ -117,6 +122,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#b8c9db',
     marginTop: 4,
+  },
+  headerActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  historyBtn: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  historyText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   logoutBtn: {
     backgroundColor: '#d32f2f',

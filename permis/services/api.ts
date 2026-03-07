@@ -80,4 +80,18 @@ export const submissionsApi = {
     const { data } = await api.get(`/submissions/result/${userId}/${examCode}`);
     return data;
   },
+
+  async getUserSubmissions(userId: number, token?: string | null) {
+    const { data } = await api.get(`/submissions/user/${userId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    return data;
+  },
+
+  async getSubmissionById(submissionId: number, token?: string | null) {
+    const { data } = await api.get(`/submissions/${submissionId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    return data;
+  },
 };
