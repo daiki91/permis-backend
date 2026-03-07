@@ -347,3 +347,77 @@ exports.getExamSubmissions = async (req, res) => {
   }
 };
 
+/**
+ * Récupérer toutes les soumissions (pour admin)
+ */
+exports.getAllSubmissions = async (req, res) => {
+  try {
+    const query = `
+      SELECT s.*, s.is_passed,
+             u.nom AS user_name, u.email AS user_email
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.user_id
+      ORDER BY s.submitted_at DESC
+    `;
+
+    const connection = await pool.getConnection();
+    const [results] = await connection.query(query);
+    connection.release();
+
+    return res.json(results);
+  } catch (error) {
+    console.error("Erreur récupération toutes soumissions:", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération des soumissions",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Récupérer le détail d'une soumission par ID (pour admin)
+ */
+exports.getSubmissionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      SELECT s.*, s.is_passed,
+             u.nom AS user_name, u.email AS user_email
+      FROM submissions s
+      LEFT JOIN users u ON u.id = s.user_id
+      WHERE s.id = ?
+    `;
+
+    const connection = await pool.getConnection();
+    const [results] = await connection.query(query, [id]);
+    connection.release();
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        message: "Soumission introuvable"
+      });
+    }
+
+    // Parse le JSON des answers
+    const submission = results[0];
+    if (submission.answers && typeof submission.answers === 'string') {
+      submission.answers = JSON.parse(submission.answers);
+    }
+    
+    // Recalculer les details à partir des answers et corrections
+    if (submission.answers && submission.exam_code) {
+      const correctionResult = correctExam(submission.exam_code, submission.answers);
+      submission.details = correctionResult.details;
+    }
+
+    return res.json(submission);
+  } catch (error) {
+    console.error("Erreur récupération soumission par ID:", error);
+    return res.status(500).json({
+      message: "Erreur lors de la récupération de la soumission",
+      error: error.message
+    });
+  }
+};
+

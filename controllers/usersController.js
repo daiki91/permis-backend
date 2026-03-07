@@ -159,7 +159,19 @@ exports.getProfile = async (req, res) => {
         res.status(500).json({ message: "Erreur serveur", error: error.message });
     }
 };
+// Obtenir tous les utilisateurs (pour admin)
+exports.getAllUsers = async (req, res) => {
+    try {
+        const conn = await pool.getConnection();
+        const [users] = await conn.query("SELECT id, nom, email, telephone, created_at FROM users ORDER BY created_at DESC");
+        conn.release();
 
+        res.json(users);
+    } catch (error) {
+        console.error("Erreur lors de la récupération des utilisateurs:", error);
+        res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+};
 // Mettre à jour le profil
 exports.updateProfile = async (req, res) => {
     try {
