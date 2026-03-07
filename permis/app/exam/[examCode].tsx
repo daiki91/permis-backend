@@ -178,14 +178,12 @@ export default function ExamScreen() {
           <View style={styles.questionGrid}>
             {exam.questions.map((q) => {
               const answered = answers[q.number] && answers[q.number].length > 0;
-              return handleValidateClick} 
-            disabled={submitting}>
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.navText}>Valider l'examen</Text>}
-          </Pressable>
-        )}
-      </View>
-
-      {renderSummaryModal()}       answered ? styles.gridItemAnswered : styles.gridItemUnanswered,
+              return (
+                <Pressable
+                  key={q.number}
+                  style={[
+                    styles.gridItem,
+                    answered ? styles.gridItemAnswered : styles.gridItemUnanswered,
                   ]}
                   onPress={() => {
                     setIndex(q.number - 1);
@@ -266,25 +264,46 @@ export default function ExamScreen() {
         ) : (
           <Pressable 
             style={[styles.navButton, styles.submitButton]} 
-            onPress={onSubmit} 
-            disabled={submitting}>
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.navText}>Valider l'examen</Text>}
+            onPress={handleValidateClick}>
+            <Text style={styles.navText}>Valider l'examen</Text>
           </Pressable>
         )}
       </View>
+
+      {renderSummaryModal()}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f7fb' },
-  containeContainer: { 
+  centered: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#f4f7fb' 
+  },
+  container: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 20, 
+    backgroundColor: '#f4f7fb' 
+  },
+  examTitle: { 
+    fontSize: 24, 
+    fontWeight: '800', 
+    color: '#102a43', 
+    marginBottom: 12, 
+    textAlign: 'center' 
+  },
+  progressContainer: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  progress: { color: '#486581', fontSize: 14 },
+  progress: { 
+    color: '#486581', 
+    fontSize: 14 
+  },
   answeredBadge: {
     backgroundColor: '#fee2e2',
     color: '#dc2626',
@@ -304,7 +323,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#bcccdc',
   },
-  optionsWrap: { flexDirection: 'row', gap: 10, justifyContent: 'space-between', marginTop: 8 },
+  optionsWrap: { 
+    flexDirection: 'row', 
+    gap: 10, 
+    justifyContent: 'space-between', 
+    marginTop: 8 
+  },
   option: {
     flex: 1,
     borderRadius: 10,
@@ -314,10 +338,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-  optionActive: { backgroundColor: '#0f4c81', borderColor: '#0f4c81' },
-  optionText: { fontWeight: '700', color: '#243b53' },
-  optionTextActive: { color: '#fff' },
-  nav: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 16 },
+  optionActive: { 
+    backgroundColor: '#0f4c81', 
+    borderColor: '#0f4c81' 
+  },
+  optionText: { 
+    fontWeight: '700', 
+    color: '#243b53' 
+  },
+  optionTextActive: { 
+    color: '#fff' 
+  },
+  nav: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    gap: 10, 
+    marginTop: 16 
+  },
   navButton: {
     flex: 1,
     backgroundColor: '#334e68',
@@ -325,9 +362,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  navButtonDisabled: { opacity: 0.35 },
-  submitButton: { backgroundColor: '#0f4c81' },
-  navText: { color: '#fff', fontWeight: '700' },
+  navButtonDisabled: { 
+    opacity: 0.35 
+  },
+  submitButton: { 
+    backgroundColor: '#0f4c81' 
+  },
+  navText: { 
+    color: '#fff', 
+    fontWeight: '700' 
+  },
   
   // Modal styles
   modalOverlay: {
@@ -459,7 +503,5 @@ const styles = StyleSheet.create({
     color: '#0f4c81',
     fontWeight: '700',
     fontSize: 14,
- 
-  submitButton: { backgroundColor: '#0f4c81' },
-  navText: { color: '#fff', fontWeight: '700' },
+  },
 });
