@@ -9,8 +9,15 @@ exports.submitExam = async (req, res) => {
   try {
     const { userId, examCode, answers } = req.body;
 
+    console.log('=== SUBMISSION RECEIVED ===');
+    console.log('userId:', userId);
+    console.log('examCode:', examCode);
+    console.log('answers keys:', Object.keys(answers || {}));
+    console.log('answers sample:', JSON.stringify(answers).substring(0, 200));
+
     // Validation des données
     if (!userId || !examCode || !answers || typeof answers !== 'object') {
+      console.error('Validation failed:', { userId, examCode, hasAnswers: !!answers });
       return res.status(400).json({
         success: false,
         message: 'Données invalides: userId, examCode et answers requis'
@@ -20,16 +27,25 @@ exports.submitExam = async (req, res) => {
     // Vérifier que l'examen existe
     const validExams = ['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09', 'B10', 'B11', 'B12'];
     if (!validExams.includes(examCode)) {
+      console.error('Invalid exam code:', examCode);
       return res.status(400).json({
         success: false,
         message: 'Code examen invalide'
       });
     }
 
+    console.log('Normalizing answers...');
     const normalizedAnswers = normalizeAnswersPayload(answers);
+    console.log('Normalized sample:', JSON.stringify(Object.entries(normalizedAnswers).slice(0, 3)));
 
     // Corriger les réponses
+    console.log('Starting correction...');
     const correctionResult = correctExam(examCode, normalizedAnswers);
+    console.log('Correction result:', {
+      correctCount: correctionResult.correctCount,
+      totalQuestions: correctionResult.totalQuestions,
+      percentage: correctionResult.percentage
+    });
 
     // Enregistrer la soumission en BD
     const query = `
@@ -37,8 +53,10 @@ exports.submitExam = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, NOW())
     `;
 
+    console.log('Getting DB connection...');
     connection = await pool.getConnection();
-    await connection.query(query, [
+    console.log('Executing query...');
+    const result = await connection.query(query, [
       userId,
       examCode,
       JSON.stringify(normalizedAnswers),
@@ -46,6 +64,7 @@ exports.submitExam = async (req, res) => {
       correctionResult.totalQuestions,
       correctionResult.percentage,
     ]);
+    console.log('Query executed successfully:', result[0]);
 
     // Retourner le résultat
     return res.status(200).json({
@@ -62,11 +81,16 @@ exports.submitExam = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erreur soumission examen:', {
+    console.error('=== SUBMISSION ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', {
       message: error.message,
       code: error.code,
       detail: error.detail,
       constraint: error.constraint,
+      name: error.name,
     });
 
     if (error.code === '23505') {
@@ -78,7 +102,7 @@ exports.submitExam = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de la soumission'
+      message: `Erreur lors de la soumission: ${error.message}`
     });
   } finally {
     if (connection) {
